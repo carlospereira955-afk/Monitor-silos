@@ -75,6 +75,7 @@ export class SenseCraftMqttClient {
   private lastErrorMessage: string | null = null
   private hasConnectedOnce = false
   private lastClientId: string | null = null
+  private lastBrokerUrl: string | null = null
 
   getStatus(): ConnectionStatus {
     return this.currentStatus
@@ -83,6 +84,11 @@ export class SenseCraftMqttClient {
   /** O clientId usado na tentativa de ligação atual/mais recente (para depuração). */
   getLastClientId(): string | null {
     return this.lastClientId
+  }
+
+  /** O URL do broker efetivamente usado na tentativa de ligação atual/mais recente. */
+  getLastBrokerUrl(): string | null {
+    return this.lastBrokerUrl
   }
 
   onStatusChange(handler: StatusHandler): () => void {
@@ -106,9 +112,10 @@ export class SenseCraftMqttClient {
     const url = config.brokerUrl?.trim() || DEFAULT_BROKER_URL
     const clientId = buildClientId(config.organizationId)
     this.lastClientId = clientId
+    this.lastBrokerUrl = url
     this.lastErrorMessage = null
     this.hasConnectedOnce = false
-    this.setStatus('connecting', `A ligar como ${clientId}…`)
+    this.setStatus('connecting', `A ligar a ${url} como ${clientId}…`)
 
     try {
       this.client = mqtt.connect(url, {
@@ -154,11 +161,12 @@ export class SenseCraftMqttClient {
       const detail =
         this.lastErrorMessage ??
         (!this.hasConnectedOnce
-          ? `O WebSocket fechou-se antes de a ligação MQTT ficar estabelecida (clientId usado: ${clientId}). ` +
+          ? `O WebSocket fechou-se antes de a ligação MQTT ficar estabelecida (URL: ${url}, clientId: ${clientId}). ` +
             'Isto acontece tipicamente quando o broker rejeita o CONNECT — Organization ID, Access API Key, ' +
             'clientId ou protocolVersion incorretos — sem que o browser exponha mais detalhe sobre o fecho ' +
             'do WebSocket nativo, por razões de segurança. Confirme as credenciais com o botão "Testar ' +
-            'credenciais" (usa a API REST, que devolve o motivo exato) e verifique o URL/porta do broker.'
+            'credenciais" (usa a API REST, que devolve o motivo exato) e verifique o URL/porta do broker nas ' +
+            'opções avançadas.'
           : 'Ligação ao broker perdida (rede em baixo ou o broker fechou a ligação). A tentar reconectar automaticamente…')
 
       this.lastErrorMessage = detail

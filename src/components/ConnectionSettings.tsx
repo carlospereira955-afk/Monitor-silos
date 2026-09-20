@@ -200,6 +200,12 @@ export function ConnectionSettings({ onClose }: { onClose: () => void }) {
             </div>
 
             <p className="text-xs text-slate-500">
+              URL do broker efetivamente usado:{' '}
+              <code className="text-slate-400">
+                {mqttClient.getLastBrokerUrl() ?? (brokerUrl.trim() || DEFAULT_BROKER_URL)}
+              </code>
+            </p>
+            <p className="text-xs text-slate-500">
               Client ID usado na ligação:{' '}
               <code className="text-slate-400">
                 {mqttClient.getLastClientId() ?? `org-${organizationId || '<OrgID>'}-<aleatório>`}
