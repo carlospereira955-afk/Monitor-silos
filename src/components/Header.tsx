@@ -43,6 +43,24 @@ export function Header() {
         </div>
       </div>
 
+      {(connectionStatus === 'error' || connectionStatus === 'reconnecting') &&
+        connectionErrorDetail && (
+          <div className="border-t border-red-900/60 bg-red-950/30 px-4 py-2">
+            <div className="mx-auto flex max-w-7xl items-start justify-between gap-3">
+              <p className="whitespace-pre-wrap break-words text-xs text-red-300">
+                {connectionErrorDetail}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="shrink-0 whitespace-nowrap text-xs text-red-200 underline hover:text-red-100"
+              >
+                Testar credenciais →
+              </button>
+            </div>
+          </div>
+        )}
+
       {settingsOpen && <ConnectionSettings onClose={() => setSettingsOpen(false)} />}
       {detectionOpen && <DetectionPanel onClose={() => setDetectionOpen(false)} />}
     </header>

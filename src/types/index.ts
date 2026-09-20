@@ -19,6 +19,13 @@ export interface ConnectionConfig {
   accessApiKey: string
   /** Permite substituir o host por omissão, se necessário (debug/proxy). */
   brokerUrl?: string
+  /**
+   * Versão do protocolo MQTT a usar no CONNECT (4 = 3.1.1, 5 = MQTT 5).
+   * A documentação da SenseCraft não é explícita sobre isto; 3.1.1 (4) é o
+   * valor mais amplamente compatível com brokers baseados em EMQX e é o
+   * omisso do MQTT.js. Configurável apenas para diagnóstico.
+   */
+  protocolVersion?: 4 | 5
 }
 
 /** Última leitura conhecida de um silo (bruta, em metros, tal como veio do radar). */
