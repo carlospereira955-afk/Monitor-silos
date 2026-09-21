@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { ConnectionStatusBadge } from './ConnectionStatusBadge'
+import { PollingStatusBadge } from './PollingStatusBadge'
 import { ConnectionSettings } from './ConnectionSettings'
 import { DetectionPanel } from './DetectionPanel'
 
 export function Header() {
-  const connectionStatus = useAppStore((s) => s.connectionStatus)
-  const connectionErrorDetail = useAppStore((s) => s.connectionErrorDetail)
   const connectionConfig = useAppStore((s) => s.connectionConfig)
+  const httpPollingStatus = useAppStore((s) => s.httpPollingStatus)
+  const httpPollingEnabled = useAppStore((s) => s.httpPollingEnabled)
+  const httpPollingDetail = useAppStore((s) => s.httpPollingDetail)
+  const httpPollingLastRunAt = useAppStore((s) => s.httpPollingLastRunAt)
+  const pollIntervalMinutes = useAppStore((s) => s.pollIntervalMinutes)
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [detectionOpen, setDetectionOpen] = useState(false)
@@ -25,7 +28,12 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <ConnectionStatusBadge status={connectionStatus} detail={connectionErrorDetail} />
+          <PollingStatusBadge
+            status={httpPollingStatus}
+            enabled={httpPollingEnabled && Boolean(connectionConfig)}
+            lastRunAt={httpPollingLastRunAt}
+            intervalMinutes={pollIntervalMinutes}
+          />
           <button
             type="button"
             onClick={() => setDetectionOpen(true)}
@@ -43,23 +51,22 @@ export function Header() {
         </div>
       </div>
 
-      {(connectionStatus === 'error' || connectionStatus === 'reconnecting') &&
-        connectionErrorDetail && (
-          <div className="border-t border-red-900/60 bg-red-950/30 px-4 py-2">
-            <div className="mx-auto flex max-w-7xl items-start justify-between gap-3">
-              <p className="whitespace-pre-wrap break-words text-xs text-red-300">
-                {connectionErrorDetail}
-              </p>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="shrink-0 whitespace-nowrap text-xs text-red-200 underline hover:text-red-100"
-              >
-                Testar credenciais →
-              </button>
-            </div>
+      {httpPollingStatus === 'error' && httpPollingDetail && (
+        <div className="border-t border-red-900/60 bg-red-950/30 px-4 py-2">
+          <div className="mx-auto flex max-w-7xl items-start justify-between gap-3">
+            <p className="whitespace-pre-wrap break-words text-xs text-red-300">
+              {httpPollingDetail}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="shrink-0 whitespace-nowrap text-xs text-red-200 underline hover:text-red-100"
+            >
+              Ver detalhes →
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
       {settingsOpen && <ConnectionSettings onClose={() => setSettingsOpen(false)} />}
       {detectionOpen && <DetectionPanel onClose={() => setDetectionOpen(false)} />}

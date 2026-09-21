@@ -4,14 +4,17 @@ import type {
   ConnectionConfig,
   ConnectionStatus,
   DetectedSample,
+  PollStatus,
   Silo,
 } from '../types'
 import { createId } from '../lib/id'
 import { mqttClient } from '../mqtt/client'
 import { buildDeviceDiscoveryTopic, buildSiloTopic, parsePayload, parseTopic } from '../mqtt/topics'
+import { httpPoller } from '../polling/httpPoller'
 import { calibrateOffsetFromKnownQuantity } from '../lib/calculations'
 
 const MAX_DETECTED_SAMPLES = 200
+export const DEFAULT_POLL_INTERVAL_MINUTES = 5
 
 function nowIso() {
   return Date.now()
@@ -56,11 +59,27 @@ interface AppState {
     samples: Record<string, DetectedSample>
   }
 
+  // --- Atualização automática do dashboard (HTTP polling) ---
+  pollIntervalMinutes: number
+  /** Preferência do utilizador: false só depois de pausar explicitamente. */
+  httpPollingEnabled: boolean
+  httpPollingStatus: PollStatus
+  httpPollingDetail: string | null
+  httpPollingLastRunAt: number | null
+  httpPollingInitialized: boolean
+
   // --- Ações: ligação ---
   setConnectionConfig: (config: ConnectionConfig) => void
   connect: () => void
   disconnect: () => void
   initMqttListeners: () => void
+
+  // --- Ações: atualização automática (HTTP polling) ---
+  initHttpPolling: () => void
+  startHttpPolling: () => void
+  stopHttpPolling: () => void
+  setPollIntervalMinutes: (minutes: number) => void
+  recordHttpReading: (id: string, rawValueMeters: number, timestamp: number) => void
 
   // --- Ações: silos ---
   addSilo: (name?: string) => string
@@ -94,8 +113,19 @@ export const useAppStore = create<AppState>()(
         samples: {},
       },
 
+      pollIntervalMinutes: DEFAULT_POLL_INTERVAL_MINUTES,
+      httpPollingEnabled: true,
+      httpPollingStatus: 'idle',
+      httpPollingDetail: null,
+      httpPollingLastRunAt: null,
+      httpPollingInitialized: false,
+
       setConnectionConfig: (config) => {
         set({ connectionConfig: config })
+        // Guardar credenciais válidas arranca logo a atualização automática
+        // do dashboard — não é preciso nenhum passo manual adicional.
+        set({ httpPollingEnabled: true })
+        get().startHttpPolling()
       },
 
       connect: () => {
@@ -179,6 +209,56 @@ export const useAppStore = create<AppState>()(
         })
       },
 
+      initHttpPolling: () => {
+        if (get().httpPollingInitialized) return
+        set({ httpPollingInitialized: true })
+
+        httpPoller.onStatusChange((status, detail) => {
+          set((state) => ({
+            httpPollingStatus: status,
+            httpPollingDetail: detail ?? null,
+            // Regista o fim de cada ciclo (idle/error), não o seu início.
+            httpPollingLastRunAt: status === 'polling' ? state.httpPollingLastRunAt : Date.now(),
+          }))
+        })
+        httpPoller.onReading((id, rawValueMeters, timestamp) => {
+          get().recordHttpReading(id, rawValueMeters, timestamp)
+        })
+      },
+
+      startHttpPolling: () => {
+        const config = get().connectionConfig
+        if (!config?.organizationId?.trim() || !config?.accessApiKey?.trim()) return
+        set({ httpPollingEnabled: true })
+        httpPoller.start(
+          () => get().connectionConfig,
+          () => get().silos,
+          get().pollIntervalMinutes,
+        )
+      },
+
+      stopHttpPolling: () => {
+        set({ httpPollingEnabled: false })
+        httpPoller.stop()
+      },
+
+      setPollIntervalMinutes: (minutes) => {
+        const safeMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : DEFAULT_POLL_INTERVAL_MINUTES
+        set({ pollIntervalMinutes: safeMinutes })
+        // Reinicia com o novo intervalo, se já estiver a correr.
+        if (httpPoller.isRunning()) {
+          get().startHttpPolling()
+        }
+      },
+
+      recordHttpReading: (id, rawValueMeters, timestamp) => {
+        set((state) => ({
+          silos: state.silos.map((s) =>
+            s.id === id ? { ...s, lastReading: { rawValueMeters, timestamp, source: 'http' }, updatedAt: Date.now() } : s,
+          ),
+        }))
+      },
+
       addSilo: (name) => {
         const silo = createEmptySilo(name?.trim() || `Silo ${get().silos.length + 1}`)
         set((state) => ({ silos: [...state.silos, silo] }))
@@ -192,6 +272,9 @@ export const useAppStore = create<AppState>()(
           ),
         }))
         get()._resyncMqttSubscriptions()
+        // Se o sensor mudou, reinicia o polling para ir já buscar a
+        // primeira leitura, em vez de esperar pelo próximo intervalo.
+        get().startHttpPolling()
       },
 
       removeSilo: (id) => {
@@ -278,6 +361,8 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         connectionConfig: state.connectionConfig,
         silos: state.silos,
+        pollIntervalMinutes: state.pollIntervalMinutes,
+        httpPollingEnabled: state.httpPollingEnabled,
       }),
       version: 1,
     },

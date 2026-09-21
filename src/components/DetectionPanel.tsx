@@ -17,16 +17,27 @@ export function DetectionPanel({ initialDeviceEui, onClose, targetSiloId }: Dete
   const stopDetection = useAppStore((s) => s.stopDetection)
   const clearDetectionSamples = useAppStore((s) => s.clearDetectionSamples)
   const connectionStatus = useAppStore((s) => s.connectionStatus)
+  const connectionConfig = useAppStore((s) => s.connectionConfig)
+  const connect = useAppStore((s) => s.connect)
+  const disconnect = useAppStore((s) => s.disconnect)
   const updateSilo = useAppStore((s) => s.updateSilo)
   const silos = useAppStore((s) => s.silos)
 
   const targetSilo = targetSiloId ? silos.find((s) => s.id === targetSiloId) : undefined
 
   useEffect(() => {
+    // O MQTT deixou de ligar automaticamente ao abrir a app — só é preciso
+    // para este modo de deteção em tempo real, por isso liga-se aqui, e
+    // desliga-se novamente ao sair, para não manter uma ligação persistente
+    // aberta sem necessidade.
+    if (connectionConfig?.organizationId && connectionConfig?.accessApiKey) {
+      connect()
+    }
     return () => {
       // Ao fechar o painel, para a deteção para não manter uma subscrição
       // "aberta" (#) indefinidamente a consumir tráfego desnecessário.
       stopDetection()
+      disconnect()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -57,7 +68,14 @@ export function DetectionPanel({ initialDeviceEui, onClose, targetSiloId }: Dete
           de forma coerente com o nível de enchimento).
         </p>
 
-        {connectionStatus !== 'connected' && (
+        {connectionStatus === 'connecting' && (
+          <div className="rounded-lg border border-amber-800 bg-amber-950/40 p-3 text-sm text-amber-300">
+            A ligar à SenseCraft…
+          </div>
+        )}
+        {(connectionStatus === 'disconnected' ||
+          connectionStatus === 'error' ||
+          connectionStatus === 'reconnecting') && (
           <div className="rounded-lg border border-amber-800 bg-amber-950/40 p-3 text-sm text-amber-300">
             É necessário estar ligado à SenseCraft para detetar sensores em tempo real.
           </div>

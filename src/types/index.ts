@@ -3,7 +3,10 @@
  */
 
 /** Origem de uma leitura de nível. */
-export type ReadingSource = 'mqtt' | 'manual'
+export type ReadingSource = 'mqtt' | 'http' | 'manual'
+
+/** Estado do polling HTTP periódico que atualiza o dashboard automaticamente. */
+export type PollStatus = 'idle' | 'polling' | 'error'
 
 /** Estado de ligação ao broker MQTT da SenseCraft. */
 export type ConnectionStatus =
@@ -26,6 +29,12 @@ export interface ConnectionConfig {
    * omisso do MQTT.js. Configurável apenas para diagnóstico.
    */
   protocolVersion?: 4 | 5
+  /**
+   * Permite substituir o host da API HTTP (Data OpenStream) da SenseCraft,
+   * usada pelo polling automático e pelo teste de credenciais. Por omissão
+   * é o mesmo domínio do broker MQTT, em HTTPS normal.
+   */
+  httpApiHost?: string
 }
 
 /** Última leitura conhecida de um silo (bruta, em metros, tal como veio do radar). */
