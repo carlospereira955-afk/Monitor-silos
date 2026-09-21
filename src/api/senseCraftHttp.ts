@@ -13,8 +13,16 @@ function resolveApiHost(config: Pick<ConnectionConfig, 'httpApiHost'>): string {
   return config.httpApiHost?.trim() || DEFAULT_HTTP_API_HOST
 }
 
-function basicAuthHeader(organizationId: string, accessApiKey: string): string {
-  return `Basic ${btoa(`org-${organizationId}:${accessApiKey}`)}`
+/**
+ * A API HTTP autentica-se com o "API ID" (gerado junto com a Access API Key
+ * em SenseCraft → Security → Access API Keys) como username — não com
+ * "org-<OrganizationID>", que é específico da autenticação MQTT. Sem
+ * `apiId` configurado, tenta o formato do MQTT como último recurso (é
+ * provável que falhe, mas evita rebentar por falta de configuração).
+ */
+function basicAuthHeader(organizationId: string, accessApiKey: string, apiId?: string): string {
+  const username = apiId?.trim() || `org-${organizationId}`
+  return `Basic ${btoa(`${username}:${accessApiKey}`)}`
 }
 
 export interface CredentialsTestResult {
@@ -28,18 +36,18 @@ export interface CredentialsTestResult {
 }
 
 /**
- * Testa as credenciais (Organization ID + Access API Key) fazendo um pedido
- * HTTP simples com Basic Auth ao endpoint `view_latest_telemetry_data` da
- * API REST da SenseCraft — a mesma autenticação usada no MQTT (username
- * `org-<OrgID>`, password = Access API Key), mas por HTTP, o que permite
- * isolar problemas de credenciais de problemas específicos do WebSocket/MQTT.
+ * Testa as credenciais fazendo um pedido HTTP simples com Basic Auth ao
+ * endpoint `view_latest_telemetry_data` da API REST da SenseCraft — usa o
+ * "API ID" como username (ver `basicAuthHeader`), diferente do MQTT — o que
+ * permite isolar problemas de credenciais de problemas específicos do
+ * WebSocket/MQTT.
  *
  * `device_eui` é opcional: o endpoint exige-o para devolver dados reais,
  * mas mesmo sem ele a resposta já distingue "credenciais inválidas" (401/403)
  * de "credenciais válidas, faltam parâmetros" (200 com corpo JSON de erro).
  */
 export async function testSenseCraftCredentials(
-  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey' | 'httpApiHost'>,
+  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey' | 'httpApiHost' | 'apiId'>,
   deviceEui?: string,
 ): Promise<CredentialsTestResult> {
   const organizationId = config.organizationId.trim()
@@ -60,7 +68,7 @@ export async function testSenseCraftCredentials(
     response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        Authorization: basicAuthHeader(organizationId, accessApiKey),
+        Authorization: basicAuthHeader(organizationId, accessApiKey, config.apiId),
         Accept: 'application/json',
       },
     })
@@ -175,7 +183,7 @@ export interface TelemetryReadingResult {
  * deteção de sensor, que precisa mesmo de dados em tempo real.
  */
 export async function fetchLatestTelemetry(
-  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey' | 'httpApiHost'>,
+  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey' | 'httpApiHost' | 'apiId'>,
   sensor: SensorRef,
 ): Promise<TelemetryReadingResult> {
   const organizationId = config.organizationId.trim()
@@ -203,7 +211,7 @@ export async function fetchLatestTelemetry(
     response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        Authorization: basicAuthHeader(organizationId, accessApiKey),
+        Authorization: basicAuthHeader(organizationId, accessApiKey, config.apiId),
         Accept: 'application/json',
       },
     })
