@@ -20,7 +20,6 @@ export default [
         localStorage: 'readonly',
         crypto: 'readonly',
         console: 'readonly',
-        setTimeout: 'readonly',
         fetch: 'readonly',
         URL: 'readonly',
         URLSearchParams: 'readonly',
@@ -30,6 +29,10 @@ export default [
         Headers: 'readonly',
         Request: 'readonly',
         process: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
       },
     },
     plugins: {
