@@ -1,11 +1,13 @@
 import type { ConnectionConfig } from '../types'
 
 /**
- * Host da API HTTP (Data OpenStream) da SenseCraft — o mesmo domínio usado
- * para MQTT, mas em HTTPS normal (porta 443, sem "/mqtt").
- * Ver: https://sensecap-docs.seeed.cc/data_openstream_reference.html
+ * Host da API HTTP da SenseCAP — um domínio DIFERENTE do usado para MQTT
+ * (`sensecap-openstream.seeed.cc`, só para WebSocket/MQTT). Confirmado por
+ * testar em produção: `sensecap-openstream.seeed.cc` na porta HTTPS normal
+ * não responde (ERR_CONNECTION_TIMED_OUT) — não há ali nenhuma API HTTP.
+ * Ver: https://sensecap-docs.seeed.cc/httpapi_quickstart.html
  */
-export const DEFAULT_HTTP_API_HOST = 'https://sensecap-openstream.seeed.cc'
+export const DEFAULT_HTTP_API_HOST = 'https://sensecap-openapi.seeed.cc'
 
 export interface CredentialsTestResult {
   ok: boolean
