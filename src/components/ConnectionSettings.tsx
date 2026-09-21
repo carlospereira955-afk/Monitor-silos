@@ -14,6 +14,7 @@ export function ConnectionSettings({ onClose }: { onClose: () => void }) {
 
   const [organizationId, setOrganizationId] = useState(connectionConfig?.organizationId ?? '')
   const [accessApiKey, setAccessApiKey] = useState(connectionConfig?.accessApiKey ?? '')
+  const [apiId, setApiId] = useState(connectionConfig?.apiId ?? '')
   const [brokerUrl, setBrokerUrl] = useState(connectionConfig?.brokerUrl ?? '')
   const [protocolVersion, setProtocolVersion] = useState<4 | 5>(
     connectionConfig?.protocolVersion ?? 4,
@@ -33,6 +34,7 @@ export function ConnectionSettings({ onClose }: { onClose: () => void }) {
     setConnectionConfig({
       organizationId: organizationId.trim(),
       accessApiKey: accessApiKey.trim(),
+      apiId: apiId.trim() || undefined,
       brokerUrl: brokerUrl.trim() || undefined,
       protocolVersion,
     })
@@ -46,7 +48,11 @@ export function ConnectionSettings({ onClose }: { onClose: () => void }) {
     setTestResult(null)
     try {
       const result = await testSenseCraftCredentials(
-        { organizationId: organizationId.trim(), accessApiKey: accessApiKey.trim() },
+        {
+          organizationId: organizationId.trim(),
+          accessApiKey: accessApiKey.trim(),
+          apiId: apiId.trim() || undefined,
+        },
         testDeviceEui,
       )
       setTestResult(result)
@@ -99,6 +105,24 @@ export function ConnectionSettings({ onClose }: { onClose: () => void }) {
           </div>
           <p className="mt-1 text-xs text-slate-500">
             Guardada apenas neste dispositivo (armazenamento local do navegador).
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-300">
+            API ID
+          </label>
+          <input
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-sky-500"
+            value={apiId}
+            onChange={(e) => setApiId(e.target.value)}
+            placeholder="ex.: C4JUPITMFLZFDME8"
+            autoComplete="off"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Identificador gerado junto com a Access API Key (aparece ao lado dela em SenseCraft →
+            Security → Access API Keys). É diferente do Organization ID — necessário para o
+            "Testar credenciais" (API HTTP); o MQTT continua a usar o Organization ID.
           </p>
         </div>
 

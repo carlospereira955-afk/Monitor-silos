@@ -31,7 +31,7 @@ export interface CredentialsTestResult {
  * de "credenciais válidas, faltam parâmetros" (200 com corpo JSON de erro).
  */
 export async function testSenseCraftCredentials(
-  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey'>,
+  config: Pick<ConnectionConfig, 'organizationId' | 'accessApiKey' | 'apiId'>,
   deviceEui?: string,
 ): Promise<CredentialsTestResult> {
   const organizationId = config.organizationId.trim()
@@ -46,7 +46,11 @@ export async function testSenseCraftCredentials(
     url.searchParams.set('device_eui', deviceEui.trim())
   }
 
-  const username = `org-${organizationId}`
+  // A API HTTP autentica-se com o "API ID" (gerado junto com a Access API
+  // Key) como username — não com "org-<OrganizationID>", que é específico
+  // do MQTT. Sem apiId configurado, tenta o formato do MQTT como último
+  // recurso (provavelmente falha, mas evita rebentar por falta dele).
+  const username = config.apiId?.trim() || `org-${organizationId}`
   const basicAuth = btoa(`${username}:${accessApiKey}`)
 
   let response: Response
