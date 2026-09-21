@@ -17,6 +17,16 @@ export type ConnectionStatus =
 export interface ConnectionConfig {
   organizationId: string
   accessApiKey: string
+  /**
+   * "API ID" — identificador gerado junto com a Access API Key em
+   * SenseCraft → Security → Access API Keys, distinto do Organization ID.
+   * A API HTTP (REST) autentica-se com este ID como username (não com
+   * "org-<OrganizationID>", que é específico do MQTT) — confirmado em
+   * produção: sem ele, a API HTTP rejeita com "bad credentials"/timeout.
+   * Opcional só por retrocompatibilidade; sem ele, o pedido HTTP cai para
+   * "org-<OrganizationID>" (o que não deve funcionar, mas evita rebentar).
+   */
+  apiId?: string
   /** Permite substituir o host por omissão, se necessário (debug/proxy). */
   brokerUrl?: string
   /**
