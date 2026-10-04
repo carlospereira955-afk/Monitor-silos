@@ -1,7 +1,15 @@
 import mqtt, { type MqttClient } from 'mqtt'
 import type { ConnectionConfig, ConnectionStatus } from '../types'
 
-export const DEFAULT_BROKER_URL = 'wss://sensecap-openstream.seeed.cc:8083/mqtt'
+/**
+ * Porta 8084 para wss (TLS) — confirmado em produção: a porta 8083
+ * (sugerida pela documentação, sem especificar TLS/não-TLS) dá
+ * net::ERR_SSL_PROTOCOL_ERROR de forma consistente, o que acontece
+ * tipicamente quando se tenta TLS contra uma porta que fala WebSocket
+ * simples (sem cifra) — convenção comum em brokers deste tipo, com 8084
+ * reservada para a variante TLS.
+ */
+export const DEFAULT_BROKER_URL = 'wss://sensecap-openstream.seeed.cc:8084/mqtt'
 
 export type MessageHandler = (topic: string, payload: string) => void
 export type StatusHandler = (status: ConnectionStatus, detail?: string) => void
