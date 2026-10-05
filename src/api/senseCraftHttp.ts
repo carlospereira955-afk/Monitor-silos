@@ -2,12 +2,17 @@ import type { ConnectionConfig } from '../types'
 
 /**
  * Host da API HTTP da SenseCAP — um domínio DIFERENTE do usado para MQTT
- * (`sensecap-openstream.seeed.cc`, só para WebSocket/MQTT). Confirmado por
- * testar em produção: `sensecap-openstream.seeed.cc` na porta HTTPS normal
- * não responde (ERR_CONNECTION_TIMED_OUT) — não há ali nenhuma API HTTP.
- * Ver: https://sensecap-docs.seeed.cc/httpapi_quickstart.html
+ * (`sensecap-openstream.seeed.cc`, só para WebSocket/MQTT). Testado
+ * diretamente em produção pelo utilizador:
+ * `https://sensecap.seeed.cc/openapi/view_latest_telemetry_data?device_eui=...`
+ * responde (serviço "sensecap-web-api-application-service"), ao contrário
+ * de `sensecap-openapi.seeed.cc` (CORS) e `sensecap-openstream.seeed.cc`
+ * (ERR_CONNECTION_TIMED_OUT) tentados antes.
  */
-export const DEFAULT_HTTP_API_HOST = 'https://sensecap-openapi.seeed.cc'
+export const DEFAULT_HTTP_API_HOST = 'https://sensecap.seeed.cc'
+
+/** Caminho base dos endpoints desta API — confirmado pelo teste acima. */
+const API_PATH_PREFIX = '/openapi'
 
 export interface CredentialsTestResult {
   ok: boolean
@@ -41,7 +46,7 @@ export async function testSenseCraftCredentials(
     return { ok: false, message: 'Preencha o Organization ID e a Access API Key primeiro.' }
   }
 
-  const url = new URL('/view_latest_telemetry_data', DEFAULT_HTTP_API_HOST)
+  const url = new URL(`${API_PATH_PREFIX}/view_latest_telemetry_data`, DEFAULT_HTTP_API_HOST)
   if (deviceEui?.trim()) {
     url.searchParams.set('device_eui', deviceEui.trim())
   }
@@ -103,10 +108,12 @@ export async function testSenseCraftCredentials(
   }
 
   // HTTP 200: as credenciais foram aceites. O campo "code" da SenseCraft
-  // pode ainda assim indicar um erro de parâmetros (ex.: device_eui em falta),
-  // o que não invalida a autenticação — só significa que faltam dados para
-  // devolver uma leitura real.
-  const code = (body as { code?: string | number } | null)?.code
+  // pode ainda assim indicar um erro de parâmetros (ex.: device_eui em falta,
+  // código 10009 "Lack of necessary parameters"), o que não invalida a
+  // autenticação — só significa que faltam dados para devolver uma leitura
+  // real. Se as credenciais estivessem erradas, isto não chegaria a HTTP 200.
+  const parsedBody = body as { code?: string | number; msg?: string } | null
+  const code = parsedBody?.code
   const isApiError = code !== undefined && String(code) !== '0'
 
   if (isApiError) {
@@ -115,7 +122,7 @@ export async function testSenseCraftCredentials(
       httpStatus: response.status,
       message:
         'Credenciais válidas — a SenseCraft autenticou o pedido. ' +
-        `A API devolveu um erro de parâmetros (código ${code}), esperado sem um Device EUI válido.`,
+        `A API devolveu um erro de parâmetros (código ${code}${parsedBody?.msg ? `: ${parsedBody.msg}` : ''}), esperado sem um Device EUI válido.`,
       raw: body,
     }
   }
